@@ -51,13 +51,28 @@ struct transaction_status_t
 // возвращаемое значение transaction_status_t если функция возращает void или тип у которого нет конструктора по умолчанию, 
 // возвращаемое значение пара из transaction_status_t и возращаемого значения функции иначе  
 template<class F, class... Ts>
-decltype(auto) transaction(F&& func, Ts&&... vals)
+decltype(auto) transaction(F&& func, Ts&&... vals) noexcept(
+		// проверка на возможнсть исключения при работе с бекапом параметров функции F
+		(0 == (0 + ... + sizeof(Ts)) ||
+		 (true && ... && std::is_nothrow_copy_constructible<std::remove_reference_t<Ts>>::value)
+		 &&  (true && ... && std::is_nothrow_copy_assignable<std::remove_reference_t<Ts>>::value)
+		) 
+		// проверка на возможнсть исключения создавая возвращаемое значение функции F перемещением в пару
+		&& (std::is_same_v<std::invoke_result_t<F,Ts...>,void> || 
+			(std::is_nothrow_move_constructible_v<std::invoke_result_t<F,Ts...>> &&
+			 std::is_nothrow_default_constructible_v<std::invoke_result_t<F,Ts...>>)
+		   )
+		// проверка на возможнсть исключения создавая transaction_status_t перемещением в пару
+		&& std::is_nothrow_default_constructible_v<transaction_status_t> 
+		&& std::is_nothrow_move_constructible_v<transaction_status_t> 
+		)
+
 {
 	constexpr bool is_vals_copy_constructible = (true && ... && std::is_copy_constructible<std::remove_reference_t<Ts>>::value);
 	static_assert(is_vals_copy_constructible, "all values must be copy constructible after remove reference");
 	std::tuple<std::remove_reference_t<Ts>...> tuple(vals...);
 
-	using f_ret_val_type = decltype(func(std::forward<Ts>(vals)...));
+	using f_ret_val_type = std::invoke_result_t<F,Ts...>;
 	constexpr bool f_has_default_contractible_ret_val = (!std::is_same_v<f_ret_val_type, void> && std::is_default_constructible<f_ret_val_type>::value);
 
 	try
