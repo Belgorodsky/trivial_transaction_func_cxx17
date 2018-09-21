@@ -53,8 +53,8 @@ struct transaction_status_t
 template<class F, class... Ts>
 decltype(auto) transaction(F&& func, Ts&&... vals) 
 {
-	constexpr bool is_vals_copy_constructible = (true && ... && std::is_copy_constructible_v<std::remove_reference_t<Ts>>);
-	static_assert(is_vals_copy_constructible, "all values must be copy constructible after remove reference");
+	constexpr bool are_vals_copy_constructible = (true && ... && std::is_copy_constructible_v<std::remove_reference_t<Ts>>);
+	static_assert(are_vals_copy_constructible, "all values must be copy constructible after remove reference");
 	std::tuple<std::remove_reference_t<Ts>...> tuple(vals...);
 
 	using f_ret_val_type = std::invoke_result_t<F,Ts...>;
@@ -74,8 +74,8 @@ decltype(auto) transaction(F&& func, Ts&&... vals)
 	}
 	catch(std::exception& e)
 	{
-		constexpr bool is_vals_copy_assignable = (true && ... && std::is_copy_assignable_v<std::remove_reference_t<Ts>>);
-		static_assert(is_vals_copy_assignable, "all values must be copy assignable after remove reference");
+		constexpr bool are_vals_copy_assignable = (true && ... && std::is_copy_assignable_v<std::remove_reference_t<Ts>>);
+		static_assert(are_vals_copy_assignable, "all values must be copy assignable after remove reference");
 		std::tie(vals...) = tuple;
 		if constexpr (f_has_default_contractible_ret_val)
 		{
